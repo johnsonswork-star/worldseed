@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#070c10" />
+  <meta name="description" content="Worldseed — terraform Vesna while defending the Seedcore. Original HTML5 tower defense." />
+  <title>Worldseed</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%231a2834'/%3E%3Ccircle cx='32' cy='32' r='14' fill='%235cbf6a'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23e8c86a'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <section id="title-screen">
+      <div class="planet" aria-hidden="true"></div>
+      <h1>Worldseed</h1>
+      <p class="tag">Vesna · Seedcore Protocol</p>
+      <p class="pitch">A dead world. One seed of life. Hold the Seedcore against rift fauna while you thaw, water, and green Vesna — four meters, four stages, one planet coming back.</p>
+      <div class="title-actions">
+        <button class="primary" id="btn-play">Play</button>
+        <button id="btn-continue" hidden>Continue</button>
+      </div>
+      <p class="hint">Touch-first · landscape recommended · no purchases</p>
+    </section>
+
+    <section id="game-screen" class="hidden">
+      <header id="hud">
+        <div class="brand">Worldseed</div>
+        <div class="stat" id="stat-wave"><b id="wave-num">0 / 10</b><span>Wave</span></div>
+        <div class="stat spores"><b id="spore-num">0</b><span>Spores</span></div>
+        <div class="stat lives"><b id="life-num">0</b><span>Lives</span></div>
+        <div class="hud-spacer"></div>
+        <div class="hud-btns">
+          <button type="button" id="btn-speed" title="Speed">1×</button>
+          <button type="button" id="btn-pause" title="Pause">Pause</button>
+          <button type="button" id="btn-mute" title="Mute">Mute</button>
+          <button type="button" id="btn-restart" title="Restart">Restart</button>
+        </div>
+      </header>
+
+      <div id="meters">
+        <div class="meter pyra"><div class="row"><span>Pyra</span><b id="pyra-val">0</b></div><div class="bar"><div class="fill" id="pyra-fill"></div></div></div>
+        <div class="meter aera"><div class="row"><span>Aera</span><b id="aera-val">0</b></div><div class="bar"><div class="fill" id="aera-fill"></div></div></div>
+        <div class="meter aqua"><div class="row"><span>Aqua</span><b id="aqua-val">0</b></div><div class="bar"><div class="fill" id="aqua-fill"></div></div></div>
+        <div class="meter vita"><div class="row"><span>Vita</span><b id="vita-val">0</b></div><div class="bar"><div class="fill" id="vita-fill"></div></div></div>
+      </div>
+
+      <div id="playfield">
+        <canvas id="c"></canvas>
+        <div class="banner" id="banner"></div>
+        <div id="inspector">
+          <h3 id="ins-name">Tower</h3>
+          <p id="ins-info"></p>
+          <div class="row">
+            <button class="primary" id="ins-up">Upgrade</button>
+            <button id="ins-sell">Sell</button>
+            <button class="ghost" id="ins-close">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="shop">
+        <div class="shop-head">
+          <h2 id="shop-title">Intermission · Rimefield</h2>
+          <button class="primary" id="btn-wave">Next Wave</button>
+        </div>
+        <div class="shop-scroll">
+          <div class="shop-row" id="tower-cards"></div>
+          <div class="shop-row" id="terra-cards"></div>
+        </div>
+      </div>
+
+      <div id="combat-bar">
+        <div class="wave-live" id="combat-label">Wave in progress</div>
+        <div id="combat-counts"></div>
+      </div>
+    </section>
+
+    <div class="overlay" id="pause-ov">
+      <div class="modal">
+        <h2>Paused</h2>
+        <p>Vesna can wait. The rift cannot, for long.</p>
+        <div class="actions">
+          <button class="primary" id="btn-resume">Resume</button>
+          <button id="btn-pause-restart">Restart</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="end-ov">
+      <div class="modal">
+        <h2 id="end-title">Seedcore lost</h2>
+        <p id="end-body"></p>
+        <div class="actions">
+          <button class="primary" id="btn-again">Play again</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="rotate-hint">Rotate for a wider field</p>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
