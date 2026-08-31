@@ -52,7 +52,37 @@
     if (id === "rime") {
       return '<svg viewBox="0 0 64 64" aria-hidden="true"><g stroke="' + c + '" stroke-width="4" stroke-linecap="round"><path d="M32 10v44M12 32h40M18 18l28 28M46 18L18 46"/></g></svg>';
     }
+    if (id === "heater") {
+      return '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="14" y="22" width="36" height="28" rx="8" fill="' + d + '"/><rect x="22" y="30" width="20" height="12" rx="3" fill="' + c + '"/><rect x="28" y="12" width="8" height="12" fill="#2a2018"/></svg>';
+    }
+    if (id === "collector") {
+      return '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M18 24h28l-4 24H22z" fill="' + d + '"/><circle cx="32" cy="20" r="8" fill="' + c + '"/><path d="M32 12v-4" stroke="' + c + '" stroke-width="3"/></svg>';
+    }
+    if (id === "vent") {
+      return '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="14" fill="' + d + '"/><path d="M22 34h20M32 24v20" stroke="' + c + '" stroke-width="3"/><path d="M18 18c8 6 20 6 28 0" fill="none" stroke="' + c + '" stroke-width="3"/></svg>';
+    }
+    if (id === "seeder") {
+      return '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="40" r="10" fill="' + d + '"/><path d="M32 36c0-12 10-18 10-18s2 12-10 18c-12-6-10-18-10-18s10 6 10 18z" fill="' + c + '"/></svg>';
+    }
     return '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="12" fill="none" stroke="' + d + '" stroke-width="4"/><path d="M20 36Q32 12 46 30" fill="none" stroke="' + c + '" stroke-width="3"/><circle cx="32" cy="34" r="4" fill="' + c + '"/></svg>';
+  }
+
+  function migrateMeters(raw) {
+    raw = raw || {};
+    if (raw.heat != null || raw.water != null) {
+      return {
+        heat: raw.heat || 0,
+        water: raw.water || 0,
+        air: raw.air || 0,
+        life: raw.life || 0
+      };
+    }
+    return {
+      heat: raw.pyra || 0,
+      water: raw.aqua || 0,
+      air: raw.aera || 0,
+      life: raw.vita || 0
+    };
   }
 
   class Game {
@@ -70,10 +100,11 @@
       this.intermission = true;
       this.spores = WS.START_SPORES;
       this.lives = WS.START_LIVES;
-      this.meters = { pyra: 0, aera: 0, aqua: 0, vita: 0 };
+      this.meters = { heat: 0, water: 0, air: 0, life: 0 };
       this.stage = 0;
       this.visualStage = 0;
       this.towers = [];
+      this.buildings = [];
       this.enemies = [];
       this.bolts = [];
       this.fx = [];
@@ -95,7 +126,6 @@
       this.waveActive = false;
       this.hudAcc = 0;
       this.pointerDown = false;
-      this.immersive = false;
       this.bindUI();
       this.resize();
       window.addEventListener("resize", () => this.scheduleResize());
@@ -103,8 +133,6 @@
       if (window.visualViewport) {
         window.visualViewport.addEventListener("resize", () => this.scheduleResize());
       }
-      document.addEventListener("fullscreenchange", () => this.syncFullscreen());
-      document.addEventListener("webkitfullscreenchange", () => this.syncFullscreen());
       document.addEventListener("visibilitychange", () => {
         if (document.hidden && this.state === "play") this.setPaused(true);
       });
@@ -115,16 +143,39 @@
     }
 
     minMeter() {
-      return Math.min(this.meters.pyra, this.meters.aera, this.meters.aqua, this.meters.vita);
+      return Math.min(this.meters.heat || 0, this.meters.water || 0, this.meters.air || 0, this.meters.life || 0);
     }
 
     computeStage() {
-      const m = this.minMeter();
-      let s = 0;
-      for (let i = 0; i < WS.STAGE_THRESHOLDS.length; i++) {
-        if (m >= WS.STAGE_THRESHOLDS[i]) s = i;
-      }
-      return s;
+      const h = this.meters.heat || 0;
+      const w = this.meters.water || 0;
+      const l = this.meters.life || 0;
+      if (l >= 70 && h >= 45 && w >= 45) return 3;
+      if (h >= 45 && w >= 20) return 2;
+      if (h >= 20) return 1;
+      return 0;
+    }
+
+    heatUnlock() {
+      const h = this.meters.heat || 0;
+      if (h >= 70) return 3;
+      if (h >= 45) return 2;
+      if (h >= 20) return 1;
+      return 0;
+    }
+
+    nextGoal() {
+      const h = this.meters.heat | 0;
+      const w = this.meters.water | 0;
+      const a = this.meters.air | 0;
+      const l = this.meters.life | 0;
+      if (h < 20) return "Heat " + h + "/20 to melt ice";
+      if (h < 45) return "Heat " + h + "/45 to thaw more ice";
+      if (w < 20) return "Water " + w + "/20 to start lakes";
+      if (w < 45) return "Water " + w + "/45 to fill lakes";
+      if (a < 40) return "Air " + a + "/40 for longer shots";
+      if (l < 70) return "Life " + l + "/70 to green Vesna";
+      return "Wildcanopy · hold the Seedcore";
     }
 
     paths() {
@@ -141,12 +192,29 @@
       const req = WS.tileStageReq(c, r);
       if (isCore) return { kind: "core", req };
       if (paths.has(key(c, r))) return { kind: "path", req };
-      if (req > this.stage) return { kind: "locked", req };
+      if (req > this.heatUnlock()) return { kind: "locked", req };
+      if (this.isLake(c, r, req)) return { kind: "lake", req };
       return { kind: "build", req };
+    }
+
+    isLake(c, r, req) {
+      if ((this.meters.water || 0) < 20) return false;
+      if (req > this.heatUnlock()) return false;
+      const h = hash(c, r);
+      const need = this.meters.water >= 45 ? 0.62 : 0.8;
+      return h > need;
     }
 
     towerAt(c, r) {
       return this.towers.find((t) => t.c === c && t.r === r);
+    }
+
+    buildingAt(c, r) {
+      return (this.buildings || []).find((t) => t.c === c && t.r === r);
+    }
+
+    occupied(c, r) {
+      return !!(this.towerAt(c, r) || this.buildingAt(c, r));
     }
 
     reset() {
@@ -154,10 +222,11 @@
       this.intermission = true;
       this.spores = WS.START_SPORES;
       this.lives = WS.START_LIVES;
-      this.meters = { pyra: 0, aera: 0, aqua: 0, vita: 0 };
+      this.meters = { heat: 0, water: 0, air: 0, life: 0 };
       this.stage = 0;
       this.visualStage = 0;
       this.towers = [];
+      this.buildings = [];
       this.enemies = [];
       this.bolts = [];
       this.fx = [];
@@ -176,7 +245,7 @@
       this.syncHUD();
       this.buildShop();
       this.openShop(true);
-      this.banner("Plant the Seedcore", 2.2);
+      this.banner("Place a Heater to melt ice", 2.4);
       this.save();
     }
 
@@ -213,7 +282,7 @@
         localStorage.setItem(
           WS.SAVE_KEY,
           JSON.stringify({
-            v: 2,
+            v: 3,
             spores: this.spores,
             lives: this.lives,
             waveIndex: this.waveIndex,
@@ -221,6 +290,9 @@
             towers: this.towers.map((t) => ({
               id: t.id, c: t.c, r: t.r, level: t.level, spent: t.spent,
               pathL: t.pathL, pathR: t.pathR, target: t.target
+            })),
+            buildings: (this.buildings || []).map((t) => ({
+              id: t.id, c: t.c, r: t.r, spent: t.spent
             }))
           })
         );
@@ -233,14 +305,15 @@
         const raw = localStorage.getItem(WS.SAVE_KEY);
         if (!raw) return false;
         const d = JSON.parse(raw);
-        if (!d || (d.v !== 1 && d.v !== 2)) return false;
+        if (!d || (d.v !== 1 && d.v !== 2 && d.v !== 3)) return false;
         this.spores = d.spores;
         this.lives = d.lives;
         this.waveIndex = d.waveIndex;
-        this.meters = d.meters;
+        this.meters = migrateMeters(d.meters);
         this.stage = this.computeStage();
         this.visualStage = this.stage;
         this.towers = (d.towers || []).map((t) => this.makeTower(t.id, t.c, t.r, t.level, t.spent, t));
+        this.buildings = (d.buildings || []).map((t) => this.makeBuilding(t.id, t.c, t.r, t.spent)).filter(Boolean);
         this.intermission = true;
         this.enemies = [];
         this.bolts = [];
@@ -254,7 +327,7 @@
     hasSave() {
       try {
         const d = JSON.parse(localStorage.getItem(WS.SAVE_KEY) || "null");
-        return !!(d && (d.v === 1 || d.v === 2) && d.lives > 0 && d.waveIndex < WS.WAVE_COUNT);
+        return !!(d && (d.v === 1 || d.v === 2 || d.v === 3) && d.lives > 0 && d.waveIndex < WS.WAVE_COUNT);
       } catch (e) {
         return false;
       }
@@ -272,7 +345,6 @@
       $("btn-pause").addEventListener("click", () => this.setPaused(!this.paused));
       $("btn-resume").addEventListener("click", () => this.setPaused(false));
       $("btn-mute").addEventListener("click", () => this.syncMute(WSAudio.toggle()));
-      $("btn-full").addEventListener("click", () => this.toggleFullscreen());
       $("btn-speed").addEventListener("click", () => {
         this.speed = this.speed === 1 ? 2 : 1;
         $("btn-speed").textContent = this.speed + "×";
@@ -321,8 +393,8 @@
           if (this.paused) this.setPaused(false);
           else this.selectTower(null);
         }
-        const ids = ["needle", "cinder", "rime", "bramble"];
-        if (e.key >= "1" && e.key <= "4") this.pickShop(ids[e.key - 1]);
+        const ids = ["needle", "cinder", "rime", "bramble", "heater", "collector", "vent", "seeder"];
+        if (e.key >= "1" && e.key <= "8") this.pickShop(ids[e.key - 1]);
       });
 
       this.syncMute(WSAudio.muted);
@@ -349,54 +421,6 @@
       this.setPaused(true);
     }
 
-    fsEl() {
-      return document.fullscreenElement || document.webkitFullscreenElement || null;
-    }
-
-    syncFullscreen() {
-      const on = !!(this.fsEl() || this.immersive);
-      document.body.classList.toggle("immersive", on);
-      const btn = $("btn-full");
-      if (btn) btn.textContent = on ? "Exit" : "Full";
-      this.scheduleResize();
-    }
-
-    async toggleFullscreen() {
-      const root = $("app") || document.documentElement;
-      WSAudio.ui();
-      const native = root.requestFullscreen || root.webkitRequestFullscreen;
-      if (this.fsEl()) {
-        this.immersive = false;
-        try {
-          if (document.exitFullscreen) await document.exitFullscreen();
-          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        } catch (e) {}
-        this.syncFullscreen();
-        return;
-      }
-      if (this.immersive) {
-        this.immersive = false;
-        this.syncFullscreen();
-        return;
-      }
-      let ok = false;
-      if (native) {
-        try {
-          if (root.requestFullscreen) await root.requestFullscreen({ navigationUI: "hide" });
-          else root.webkitRequestFullscreen();
-          ok = true;
-        } catch (e) {
-          ok = false;
-        }
-      }
-      if (!ok && !this.fsEl()) {
-        this.immersive = true;
-        try { window.scrollTo(0, 0); } catch (e) {}
-        this.banner("Safari keeps the address bar. Add to Home Screen for true full screen.", 2.6);
-      }
-      this.syncFullscreen();
-    }
-
     scheduleResize() {
       this.resize();
       requestAnimationFrame(() => {
@@ -408,20 +432,10 @@
     resize() {
       const wrap = $("playfield");
       if (!wrap || !this.canvas) return;
-      const rect = wrap.getBoundingClientRect();
-      const vv = window.visualViewport;
-      let availW = rect.width;
-      let availH = rect.height;
-      if (availW < 80 || availH < 80) {
-        const vw = vv ? vv.width : window.innerWidth;
-        const vh = vv ? vv.height : window.innerHeight;
-        availW = Math.max(availW, vw);
-        availH = Math.max(availH, vh);
-      }
-      availW = Math.max(160, availW);
-      availH = Math.max(140, availH);
+      const availW = Math.max(8, wrap.clientWidth);
+      const availH = Math.max(8, wrap.clientHeight);
       const pad = 2;
-      const ts = Math.max(12, Math.floor(Math.min((availW - pad) / WS.COLS, (availH - pad) / WS.ROWS)));
+      const ts = Math.max(8, Math.floor(Math.min((availW - pad) / WS.COLS, (availH - pad) / WS.ROWS)));
       this.ts = ts;
       this.lw = ts * WS.COLS;
       this.lh = ts * WS.ROWS;
@@ -445,7 +459,7 @@
 
     onTapTile(c, r) {
       if (this.ended || this.paused) return;
-      const tw = this.towerAt(c, r);
+      const tw = this.towerAt(c, r) || this.buildingAt(c, r);
       if (tw) {
         this.selectedShop = null;
         this.highlightShop();
@@ -454,8 +468,9 @@
         return;
       }
       const tile = this.tileAt(c, r);
-      if (this.selectedShop && tile && tile.kind === "build") {
-        this.placeTower(this.selectedShop, c, r);
+      if (this.selectedShop && tile && tile.kind === "build" && !this.occupied(c, r)) {
+        if (WS.BUILDINGS[this.selectedShop]) this.placeBuilding(this.selectedShop, c, r);
+        else this.placeTower(this.selectedShop, c, r);
         return;
       }
       this.selectTower(null);
@@ -475,9 +490,21 @@
     refreshInspector() {
       const tw = this.selectedTower;
       if (!tw) return;
+      const bdef = WS.BUILDINGS[tw.id];
+      const refund = Math.floor(tw.spent * WS.SELL_RATIO);
+      const pathsEl = document.querySelector("#inspector .paths");
+      if (bdef) {
+        $("ins-name").textContent = bdef.name;
+        $("ins-info").textContent = bdef.blurb + " · +" + bdef.rate + " " + WS.METER_LABEL[bdef.meter] + "/s · Sell " + refund;
+        if (pathsEl) pathsEl.style.display = "none";
+        $("ins-target").hidden = true;
+        $("ins-sell").textContent = "Sell " + refund;
+        return;
+      }
       const def = WS.TOWERS[tw.id];
       const paths = WS.PATHS[tw.id];
-      const refund = Math.floor(tw.spent * WS.SELL_RATIO);
+      if (pathsEl) pathsEl.style.display = "";
+      $("ins-target").hidden = false;
       $("ins-name").textContent = def.name;
       $("ins-info").textContent =
         "Focus " + tw.pathL + "/2 · Reach " + tw.pathR + "/2 · Sell " + refund + " spores";
@@ -525,7 +552,7 @@
 
     cycleTarget() {
       const tw = this.selectedTower;
-      if (!tw) return;
+      if (!tw || tw.kind === "terra" || WS.BUILDINGS[tw.id]) return;
       const order = WS.TARGET_ORDER;
       const i = order.indexOf(tw.target || "first");
       tw.target = order[(i + 1) % order.length];
@@ -563,14 +590,14 @@
       const r = tw.pathR || 0;
       const dmg = def.dmg * (1 + 0.4 * l);
       let range = def.range * (1 + 0.15 * r);
-      if (this.meters.aera >= 40) range *= 1.08;
+      if (this.meters.air >= 40) range *= 1.08;
       const cd = def.cd * Math.pow(0.91, l);
       let splash = def.splash ? def.splash * (1 + 0.16 * r) : 0;
-      if (def.splash && this.meters.pyra >= 40) splash *= 1.15;
+      if (def.splash && this.meters.heat >= 40) splash *= 1.15;
       let slow = def.slow ? def.slow * (1 + 0.08 * r) : 0;
-      if (def.slow && this.meters.aqua >= 40) slow = Math.min(0.65, slow + 0.1);
+      if (def.slow && this.meters.water >= 40) slow = Math.min(0.65, slow + 0.1);
       let poison = def.poison ? def.poison * (1 + 0.22 * r) : 0;
-      if (def.poison && this.meters.vita >= 40) poison *= 1.25;
+      if (def.poison && this.meters.life >= 40) poison *= 1.25;
       const slowTime = def.slowTime ? def.slowTime * (1 + 0.12 * r) : 0;
       const poisonTime = def.poisonTime || 0;
       const armorPierce = (tw.id === "needle" && r >= 2) ? 0.45 : 0;
@@ -580,7 +607,7 @@
     placeTower(id, c, r) {
       const def = WS.TOWERS[id];
       if (!def) return;
-      if (this.towerAt(c, r)) return;
+      if (this.occupied(c, r)) return;
       const tile = this.tileAt(c, r);
       if (!tile || tile.kind !== "build") return;
       if (this.spores < def.cost) {
@@ -621,10 +648,45 @@
       const back = Math.floor(tw.spent * WS.SELL_RATIO);
       this.spores += back;
       this.towers = this.towers.filter((t) => t !== tw);
+      this.buildings = (this.buildings || []).filter((t) => t !== tw);
       this.selectTower(null);
       WSAudio.ui();
       this.syncHUD();
       this.buildShop();
+    }
+
+    makeBuilding(id, c, r, spent) {
+      const def = WS.BUILDINGS[id];
+      if (!def) return null;
+      return { id, c, r, spent: spent != null ? spent : def.cost, kind: "terra" };
+    }
+
+    placeBuilding(id, c, r) {
+      const def = WS.BUILDINGS[id];
+      if (!def) return;
+      if (this.occupied(c, r)) return;
+      const tile = this.tileAt(c, r);
+      if (!tile || tile.kind !== "build") return;
+      if (this.spores < def.cost) {
+        this.banner("Need " + def.cost + " spores", 1.1);
+        return;
+      }
+      this.spores -= def.cost;
+      this.buildings.push(this.makeBuilding(id, c, r));
+      WSAudio.place();
+      this.burst((c + 0.5) * this.ts, (r + 0.5) * this.ts, def.color, 10);
+      this.syncHUD();
+      this.buildShop();
+    }
+
+    tickBuildings(dt) {
+      const mul = this.intermission ? 1 : 0.35;
+      (this.buildings || []).forEach((b) => {
+        const def = WS.BUILDINGS[b.id];
+        if (!def) return;
+        this.meters[def.meter] = clamp(this.meters[def.meter] + def.rate * dt * mul, 0, WS.METER_MAX);
+      });
+      this.maybeStageUp();
     }
 
     pickShop(id) {
@@ -635,7 +697,7 @@
     }
 
     highlightShop() {
-      document.querySelectorAll("#tower-cards .card").forEach((el) => {
+      document.querySelectorAll("#sidebar .card").forEach((el) => {
         el.classList.toggle("selected", el.dataset.id === this.selectedShop);
       });
     }
@@ -659,52 +721,28 @@
       });
       this.highlightShop();
 
-      const terra = $("terra-cards");
-      terra.innerHTML = "";
-      const items = [
-        ["pyra", "pyra"], ["aera", "aera"], ["aqua", "aqua"], ["vita", "vita"], ["pulse", "pulse"]
-      ];
-      items.forEach(([id, cls]) => {
-        const it = WS.TERRAFORM[id];
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "card " + cls;
-        const full = id === "pulse"
-          ? this.minMeter() >= WS.METER_MAX
-          : this.meters[id] >= WS.METER_MAX;
-        b.disabled = !this.intermission || this.spores < it.cost || full;
-        const amt = id === "pulse" ? "+12 all meters" : "+" + it.amount + " " + WS.METER_LABEL[id];
-        b.innerHTML = '<div class="name">' + it.label + '</div><div class="blurb">' + amt + " · intermission</div><div class='cost'>" + it.cost + " spores</div>";
-        b.addEventListener("click", () => this.buyTerra(id));
-        terra.appendChild(b);
-      });
-
-      $("shop-title").textContent =
-        "Intermission · " + WS.STAGE_NAMES[this.stage] +
-        (this.waveIndex >= WS.WAVE_COUNT ? " · Finale" : " · next wave " + (this.waveIndex + 1));
+      const buildWrap = $("build-cards");
+      if (buildWrap) {
+        buildWrap.innerHTML = "";
+        Object.values(WS.BUILDINGS).forEach((def) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "card " + def.id;
+          b.dataset.id = def.id;
+          const full = this.meters[def.meter] >= WS.METER_MAX;
+          b.disabled = this.spores < def.cost || full;
+          b.setAttribute("aria-label", def.name + " " + def.cost + " spores");
+          b.innerHTML =
+            '<div class="portrait" style="--c1:' + def.color + ";--c2:" + def.color2 + '">' +
+            portraitSVG(def.id, def) +
+            '</div><div class="name">' + def.name + '</div><div class="cost">' + def.cost + "</div>";
+          b.addEventListener("click", () => this.pickShop(def.id));
+          buildWrap.appendChild(b);
+        });
+      }
+      this.highlightShop();
       $("btn-wave").disabled = this.waveIndex >= WS.WAVE_COUNT;
       $("btn-wave").textContent = this.waveIndex >= WS.WAVE_COUNT ? "Complete" : "Next Wave";
-    }
-
-    buyTerra(id) {
-      if (!this.intermission || this.ended) return;
-      const it = WS.TERRAFORM[id];
-      if (!it || this.spores < it.cost) return;
-      if (id === "pulse") {
-        if (this.minMeter() >= WS.METER_MAX) return;
-        this.spores -= it.cost;
-        WS.METERS.forEach((m) => {
-          this.meters[m] = clamp(this.meters[m] + it.amount, 0, WS.METER_MAX);
-        });
-      } else {
-        if (this.meters[id] >= WS.METER_MAX) return;
-        this.spores -= it.cost;
-        this.meters[id] = clamp(this.meters[id] + it.amount, 0, WS.METER_MAX);
-      }
-      WSAudio.place();
-      this.maybeStageUp();
-      this.syncHUD();
-      this.buildShop();
     }
 
     maybeStageUp() {
@@ -716,19 +754,22 @@
         this.banner(WS.STAGE_NAMES[this.stage] + " · Vesna shifts", 2.4);
         this.flash = 0.55;
         this.shake = 10;
-        this.towers = this.towers.filter((t) => {
+        const keep = (t) => {
           const tile = this.tileAt(t.c, t.r);
           if (tile && tile.kind === "build") return true;
           this.spores += Math.floor(t.spent * WS.SELL_RATIO);
           return false;
-        });
+        };
+        this.towers = this.towers.filter(keep);
+        this.buildings = (this.buildings || []).filter(keep);
         this.seedAmbience();
       }
     }
 
     openShop(open) {
       this.intermission = open;
-      $("terra-panel").classList.toggle("open", open);
+      const panel = $("terra-panel");
+      if (panel) panel.classList.toggle("open", open);
       $("btn-wave").hidden = !open;
       $("combat-status").classList.toggle("open", !open);
       if (open) {
@@ -912,7 +953,7 @@
       $("end-title").textContent = "Vesna lives";
       $("end-body").textContent =
         "The rift closes. Wildcanopy takes the old ice. You held the Seedcore through 10 waves — Pyra " +
-        this.meters.pyra + " · Aera " + this.meters.aera + " · Aqua " + this.meters.aqua + " · Vita " + this.meters.vita + ".";
+        this.meters.heat + " Heat · " + this.meters.water + " Water · " + this.meters.air + " Air · " + this.meters.life + " Life.";
       $("end-ov").classList.add("open");
     }
 
@@ -992,9 +1033,13 @@
       $("life-num").textContent = String(Math.max(0, this.lives));
       const chip = $("stage-chip");
       if (chip) chip.textContent = WS.STAGE_NAMES[this.stage];
+      const goal = $("stage-goal");
+      if (goal) goal.textContent = this.nextGoal();
       WS.METERS.forEach((m) => {
-        $(m + "-val").textContent = String(this.meters[m] | 0);
-        $(m + "-fill").style.width = this.meters[m] + "%";
+        const val = $(m + "-val");
+        const fill = $(m + "-fill");
+        if (val) val.textContent = String(this.meters[m] | 0);
+        if (fill) fill.style.width = this.meters[m] + "%";
       });
       const left = this.enemies.filter((e) => !e._dead).length;
       const q = this.spawnQ.length;
@@ -1023,6 +1068,7 @@
       });
 
       if (this.state !== "play" || this.paused || this.ended) return;
+      this.tickBuildings(dt);
 
       if (!this.intermission) {
         this.spawnWait -= dt;
@@ -1166,12 +1212,21 @@
             ctx.globalAlpha = 0.35;
             ctx.strokeRect(x + 1, y + 1, ts - 2, ts - 2);
             ctx.globalAlpha = 1;
-            if (this.meters.aqua > 15) {
-              ctx.globalAlpha = clamp(this.meters.aqua / 200, 0.05, 0.28);
+            if (this.meters.water > 15) {
+              ctx.globalAlpha = clamp(this.meters.water / 200, 0.05, 0.28);
               ctx.fillStyle = pal.water;
               ctx.fillRect(x + ts * 0.15, y + ts * 0.4, ts * 0.7, ts * 0.18);
               ctx.globalAlpha = 1;
             }
+            continue;
+          }
+          if (tile.kind === "lake") {
+            ctx.fillStyle = pal.water;
+            ctx.fillRect(x, y, ts, ts);
+            ctx.fillStyle = "rgba(200,240,255,0.35)";
+            ctx.beginPath();
+            ctx.ellipse(x + ts * 0.5, y + ts * 0.55, ts * 0.28, ts * 0.12, 0, 0, Math.PI * 2);
+            ctx.fill();
             continue;
           }
           if (tile.kind === "core") continue;
@@ -1225,23 +1280,26 @@
 
       if (this.selectedShop && this.hover) {
         const t = this.tileAt(this.hover.c, this.hover.r);
-        const st = WS.TOWERS[this.selectedShop];
+        const st = WS.TOWERS[this.selectedShop] || WS.BUILDINGS[this.selectedShop];
         if (st) {
-          const ok = t && t.kind === "build" && !this.towerAt(this.hover.c, this.hover.r);
+          const ok = t && t.kind === "build" && !this.occupied(this.hover.c, this.hover.r);
           ctx.globalAlpha = 0.2;
           ctx.fillStyle = ok ? "#80e0a0" : "#e07070";
           ctx.fillRect(this.hover.c * ts, this.hover.r * ts, ts, ts);
-          ctx.globalAlpha = 0.28;
-          ctx.strokeStyle = st.color;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc((this.hover.c + 0.5) * ts, (this.hover.r + 0.5) * ts, st.range * ts * (this.meters.aera >= 40 ? 1.08 : 1), 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.globalAlpha = 1;
+          if (st.range) {
+            ctx.globalAlpha = 0.28;
+            ctx.strokeStyle = st.color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc((this.hover.c + 0.5) * ts, (this.hover.r + 0.5) * ts, st.range * ts * (this.meters.air >= 40 ? 1.08 : 1), 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
         }
       }
 
       this.towers.forEach((tw) => this.drawTower(tw, pal));
+      (this.buildings || []).forEach((b) => this.drawBuilding(b));
       this.enemies.forEach((e) => this.drawEnemy(e));
       this.bolts.forEach((b) => {
         ctx.fillStyle = b.color;
@@ -1301,6 +1359,91 @@
       this.ctx.beginPath();
       this.ctx.arc(x, y, ts * 0.38, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
       this.ctx.stroke();
+    }
+
+    drawBuilding(b) {
+      const ctx = this.ctx;
+      const ts = this.ts;
+      const def = WS.BUILDINGS[b.id];
+      if (!def) return;
+      const x = (b.c + 0.5) * ts;
+      const y = (b.r + 0.5) * ts;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.lineWidth = Math.max(2, ts * 0.06);
+      ctx.strokeStyle = "#1a120c";
+      if (b.id === "heater") {
+        ctx.fillStyle = "#f2efe6";
+        this.roundRect(-ts * 0.28, -ts * 0.08, ts * 0.56, ts * 0.38, ts * 0.1);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#3a7ad0";
+        this.roundRect(-ts * 0.28, ts * 0.18, ts * 0.56, ts * 0.12, ts * 0.06);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#ff9a3a";
+        ctx.beginPath();
+        ctx.arc(0, ts * 0.06, ts * 0.12, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#2a2018";
+        this.roundRect(-ts * 0.06, -ts * 0.28, ts * 0.12, ts * 0.2, 2);
+        ctx.fill(); ctx.stroke();
+      } else if (b.id === "collector") {
+        ctx.fillStyle = "#f2efe6";
+        this.roundRect(-ts * 0.26, -ts * 0.02, ts * 0.52, ts * 0.34, ts * 0.1);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#3aa0d8";
+        ctx.beginPath();
+        ctx.moveTo(-ts * 0.2, -ts * 0.02);
+        ctx.lineTo(-ts * 0.08, -ts * 0.22);
+        ctx.lineTo(ts * 0.08, -ts * 0.22);
+        ctx.lineTo(ts * 0.2, -ts * 0.02);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#8ee0ff";
+        ctx.beginPath();
+        ctx.arc(0, ts * 0.12, ts * 0.08, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (b.id === "vent") {
+        ctx.fillStyle = "#d8eef6";
+        ctx.beginPath();
+        ctx.arc(0, ts * 0.06, ts * 0.22, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = "#7ec8e8";
+        ctx.lineWidth = Math.max(2, ts * 0.05);
+        ctx.beginPath();
+        ctx.arc(0, -ts * 0.1, ts * 0.16, Math.PI * 1.1, Math.PI * 1.9);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = "#c8f0a8";
+        ctx.beginPath();
+        ctx.ellipse(0, ts * 0.12, ts * 0.18, ts * 0.12, 0, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#5cbf6a";
+        ctx.beginPath();
+        ctx.moveTo(0, ts * 0.08);
+        ctx.quadraticCurveTo(-ts * 0.2, -ts * 0.18, 0, -ts * 0.28);
+        ctx.quadraticCurveTo(ts * 0.2, -ts * 0.18, 0, ts * 0.08);
+        ctx.fill(); ctx.stroke();
+      }
+      ctx.restore();
+      if (this.selectedTower === b) {
+        ctx.strokeStyle = def.color2;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(b.c * ts + 2, b.r * ts + 2, ts - 4, ts - 4);
+      }
+    }
+
+    roundRect(x, y, w, h, r) {
+      const ctx = this.ctx;
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.arcTo(x + w, y, x + w, y + h, rr);
+      ctx.arcTo(x + w, y + h, x, y + h, rr);
+      ctx.arcTo(x, y + h, x, y, rr);
+      ctx.arcTo(x, y, x + w, y, rr);
+      ctx.closePath();
     }
 
     drawTower(tw, pal) {

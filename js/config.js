@@ -39,15 +39,41 @@
     STAGE_NAMES: ["Rimefield", "Cinderveil", "Thawsteppe", "Wildcanopy"],
     STAGE_BONUS: 40,
     METER_MAX: 100,
-    METERS: ["pyra", "aera", "aqua", "vita"],
-    METER_LABEL: { pyra: "Pyra", aera: "Aera", aqua: "Aqua", vita: "Vita" },
-    TERRAFORM: {
-      pyra: { cost: 35, amount: 20, label: "Pyra Flare" },
-      aera: { cost: 35, amount: 20, label: "Aera Bellows" },
-      aqua: { cost: 35, amount: 20, label: "Aqua Tap" },
-      vita: { cost: 35, amount: 20, label: "Vita Spore" },
-      pulse: { cost: 90, amount: 12, label: "Worldpulse" }
+    METERS: ["heat", "water", "air", "life"],
+    METER_LABEL: { heat: "Heat", water: "Water", air: "Air", life: "Life" },
+    METER_HINT: {
+      heat: "Heat melts ice and opens frozen land",
+      water: "Water fills lakes — Rime fights better near them",
+      air: "Air stretches tower range and lets plants grow",
+      life: "Life greens Vesna"
     },
+    BUILDINGS: {
+      heater: {
+        id: "heater", name: "Heater", kind: "terra",
+        blurb: "Melts ice. +Heat over time.",
+        cost: 55, meter: "heat", rate: 4.2,
+        color: "#e87838", color2: "#ffc070"
+      },
+      collector: {
+        id: "collector", name: "Collector", kind: "terra",
+        blurb: "Fills lakes. +Water over time.",
+        cost: 55, meter: "water", rate: 4.2,
+        color: "#3aa0c8", color2: "#80d0ff"
+      },
+      vent: {
+        id: "vent", name: "Vent", kind: "terra",
+        blurb: "Air for range, then plants.",
+        cost: 50, meter: "air", rate: 3.6,
+        color: "#7ec8e8", color2: "#d8f4ff"
+      },
+      seeder: {
+        id: "seeder", name: "Seeder", kind: "terra",
+        blurb: "Sows Life once the world can grow.",
+        cost: 70, meter: "life", rate: 3.4,
+        color: "#5cbf6a", color2: "#c8f0a8"
+      }
+    },
+    TERRAFORM: {},
     TARGET_ORDER: ["first", "last", "close", "strong"],
     TARGET_LABEL: { first: "First", last: "Last", close: "Close", strong: "Strong" },
     PATH_NAMES: { L: "Focus", R: "Reach" },

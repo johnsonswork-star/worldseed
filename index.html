@@ -47,11 +47,12 @@
         </div>
         <div class="stage-pill" id="stage-chip">Rimefield</div>
         <div id="meters">
-          <div class="meter pyra"><div class="row"><span>Pyra</span><b id="pyra-val">0</b></div><div class="bar"><div class="fill" id="pyra-fill"></div></div></div>
-          <div class="meter aera"><div class="row"><span>Aera</span><b id="aera-val">0</b></div><div class="bar"><div class="fill" id="aera-fill"></div></div></div>
-          <div class="meter aqua"><div class="row"><span>Aqua</span><b id="aqua-val">0</b></div><div class="bar"><div class="fill" id="aqua-fill"></div></div></div>
-          <div class="meter vita"><div class="row"><span>Vita</span><b id="vita-val">0</b></div><div class="bar"><div class="fill" id="vita-fill"></div></div></div>
+          <div class="meter heat" title="Heat melts ice"><div class="row"><span>Heat</span><b id="heat-val">0</b></div><div class="bar"><div class="fill" id="heat-fill"></div></div></div>
+          <div class="meter water" title="Water fills lakes"><div class="row"><span>Water</span><b id="water-val">0</b></div><div class="bar"><div class="fill" id="water-fill"></div></div></div>
+          <div class="meter air" title="Air stretches range and lets plants grow"><div class="row"><span>Air</span><b id="air-val">0</b></div><div class="bar"><div class="fill" id="air-fill"></div></div></div>
+          <div class="meter life" title="Life greens Vesna"><div class="row"><span>Life</span><b id="life-val">0</b></div><div class="bar"><div class="fill" id="life-fill"></div></div></div>
         </div>
+        <p id="stage-goal">Place a Heater to melt ice</p>
       </header>
 
       <div id="match">
@@ -59,13 +60,6 @@
           <canvas id="c"></canvas>
           <div class="banner" id="banner"></div>
 
-          <aside id="terra-panel" aria-label="Terraform shop">
-            <div class="terra-head">
-              <h2>Terraform</h2>
-              <p id="shop-title">Intermission</p>
-            </div>
-            <div id="terra-cards"></div>
-          </aside>
 
           <div id="inspector">
             <div class="ins-head">
@@ -93,6 +87,8 @@
         <aside id="sidebar">
           <div class="tray-label">Towers</div>
           <div id="tower-cards"></div>
+          <div class="tray-label">World</div>
+          <div id="build-cards"></div>
         </aside>
       </div>
 
@@ -107,7 +103,6 @@
           <button type="button" id="btn-pause" title="Pause">Pause</button>
           <button type="button" id="btn-speed" title="Fast-forward">1×</button>
           <button type="button" id="btn-mute" title="Mute">Mute</button>
-          <button type="button" id="btn-full" title="Fullscreen">Full</button>
           <button type="button" id="btn-restart" title="Restart">Restart</button>
         </div>
       </footer>
