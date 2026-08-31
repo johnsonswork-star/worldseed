@@ -10,12 +10,12 @@ Playable in a mobile browser (touch-first, landscape-friendly). No accounts, no 
 ## How to play
 
 1. Tap **Play**. You start in intermission on **Rimefield** with 180 Spores and 16 lives.
-2. Tap a tower card (**Needle**, **Cinder**, **Rime**, **Bramble**), then tap a thawed tile to place it. Tap an existing tower to upgrade (3 levels) or sell (60% refund).
-3. Buy terraform (Pyra Flare, Aera Bellows, Aqua Tap, Vita Spore, or Worldpulse). Terraform is **intermission-only**.
+2. Tap a tower portrait in the right tray (**Needle**, **Cinder**, **Rime**, **Bramble**), then tap a thawed tile to place it. Tap a placed tower for **Focus** / **Reach** upgrades (two paths, 2/1 crosspath cap) or sell (75% refund). Cycle targeting with First / Last / Close / Strong.
+3. During intermission, buy terraform from the labeled corner panel (Pyra Flare, Aera Bellows, Aqua Tap, Vita Spore, or Worldpulse). Terraform is **intermission-only**.
 4. Tap **Next Wave**. Enemies walk the lane toward the Seedcore. If they arrive, you lose lives. Zero lives is defeat.
 5. Clear 10 waves to win. Stage names: Rimefield → Cinderveil → Thawsteppe → Wildcanopy.
 
-HUD: meters, Spores, wave, lives. Pause, mute, 1×/2×, restart. Optional auto-save in `localStorage` between waves.
+HUD: heart / Spores / wave on top, tower tray on the right, Next Wave + Pause + 1×/2× + Mute along the bottom. Optional auto-save in `localStorage` between waves.
 
 Rotate a phone to landscape for the widest field. Desktop also works (keys: `1–4` pick towers, `Space` pause, `M` mute).
 

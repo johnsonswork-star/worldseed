@@ -32,7 +32,7 @@
     CORE: [17, 4],
     START_SPORES: 180,
     START_LIVES: 16,
-    SELL_RATIO: 0.6,
+    SELL_RATIO: 0.75,
     SAVE_KEY: "worldseed-save-v1",
     WAVE_COUNT: 10,
     STAGE_THRESHOLDS: [0, 20, 45, 70],
@@ -47,6 +47,51 @@
       aqua: { cost: 35, amount: 20, label: "Aqua Tap" },
       vita: { cost: 35, amount: 20, label: "Vita Spore" },
       pulse: { cost: 90, amount: 12, label: "Worldpulse" }
+    },
+    TARGET_ORDER: ["first", "last", "close", "strong"],
+    TARGET_LABEL: { first: "First", last: "Last", close: "Close", strong: "Strong" },
+    PATH_NAMES: { L: "Focus", R: "Reach" },
+    PATHS: {
+      needle: {
+        L: [
+          { name: "Honed", blurb: "+40% damage" },
+          { name: "Rapid", blurb: "+40% dmg · faster" }
+        ],
+        R: [
+          { name: "Longshot", blurb: "+15% range" },
+          { name: "Skewer", blurb: "+15% range · cuts armor" }
+        ]
+      },
+      cinder: {
+        L: [
+          { name: "Hotter", blurb: "+40% damage" },
+          { name: "Inferno", blurb: "+40% dmg · faster" }
+        ],
+        R: [
+          { name: "Bloom", blurb: "+ splash · range" },
+          { name: "Magma", blurb: "Wider burst" }
+        ]
+      },
+      rime: {
+        L: [
+          { name: "Colder", blurb: "+40% damage" },
+          { name: "Shatter", blurb: "+40% dmg · faster" }
+        ],
+        R: [
+          { name: "Drift", blurb: "Longer slow · range" },
+          { name: "Deep chill", blurb: "Stronger slow" }
+        ]
+      },
+      bramble: {
+        L: [
+          { name: "Thorns", blurb: "+40% damage" },
+          { name: "Lash", blurb: "+40% dmg · faster" }
+        ],
+        R: [
+          { name: "Venom", blurb: "+ poison · range" },
+          { name: "Rootweb", blurb: "Heavier poison" }
+        ]
+      }
     },
     PATH_A,
     PATH_A_LONG,

@@ -27,55 +27,88 @@
 
     <section id="game-screen" class="hidden">
       <header id="hud">
-        <div class="brand">Worldseed</div>
-        <div class="stat" id="stat-wave"><b id="wave-num">0 / 10</b><span>Wave</span></div>
-        <div class="stat spores"><b id="spore-num">0</b><span>Spores</span></div>
-        <div class="stat lives"><b id="life-num">0</b><span>Lives</span></div>
-        <div class="hud-spacer"></div>
-        <div class="hud-btns">
-          <button type="button" id="btn-speed" title="Speed">1×</button>
-          <button type="button" id="btn-pause" title="Pause">Pause</button>
-          <button type="button" id="btn-mute" title="Mute">Mute</button>
-          <button type="button" id="btn-restart" title="Restart">Restart</button>
+        <div class="stat lives" title="Lives">
+          <span class="ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          </span>
+          <b id="life-num">0</b>
+        </div>
+        <div class="stat spores" title="Spores">
+          <span class="ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="currentColor"/><circle cx="8.2" cy="8.4" r="2.1" fill="#f4e3a4"/><circle cx="15.4" cy="10" r="1.4" fill="#c9a227"/></svg>
+          </span>
+          <b id="spore-num">0</b>
+          <span>Spores</span>
+        </div>
+        <div class="stat wave" id="stat-wave" title="Wave">
+          <span>Wave</span>
+          <b id="wave-num">0 / 10</b>
+        </div>
+        <div class="stage-pill" id="stage-chip">Rimefield</div>
+        <div id="meters">
+          <div class="meter pyra"><div class="row"><span>Pyra</span><b id="pyra-val">0</b></div><div class="bar"><div class="fill" id="pyra-fill"></div></div></div>
+          <div class="meter aera"><div class="row"><span>Aera</span><b id="aera-val">0</b></div><div class="bar"><div class="fill" id="aera-fill"></div></div></div>
+          <div class="meter aqua"><div class="row"><span>Aqua</span><b id="aqua-val">0</b></div><div class="bar"><div class="fill" id="aqua-fill"></div></div></div>
+          <div class="meter vita"><div class="row"><span>Vita</span><b id="vita-val">0</b></div><div class="bar"><div class="fill" id="vita-fill"></div></div></div>
         </div>
       </header>
 
-      <div id="meters">
-        <div class="meter pyra"><div class="row"><span>Pyra</span><b id="pyra-val">0</b></div><div class="bar"><div class="fill" id="pyra-fill"></div></div></div>
-        <div class="meter aera"><div class="row"><span>Aera</span><b id="aera-val">0</b></div><div class="bar"><div class="fill" id="aera-fill"></div></div></div>
-        <div class="meter aqua"><div class="row"><span>Aqua</span><b id="aqua-val">0</b></div><div class="bar"><div class="fill" id="aqua-fill"></div></div></div>
-        <div class="meter vita"><div class="row"><span>Vita</span><b id="vita-val">0</b></div><div class="bar"><div class="fill" id="vita-fill"></div></div></div>
-      </div>
+      <div id="match">
+        <div id="playfield">
+          <canvas id="c"></canvas>
+          <div class="banner" id="banner"></div>
 
-      <div id="playfield">
-        <canvas id="c"></canvas>
-        <div class="banner" id="banner"></div>
-        <div id="inspector">
-          <h3 id="ins-name">Tower</h3>
-          <p id="ins-info"></p>
-          <div class="row">
-            <button class="primary" id="ins-up">Upgrade</button>
-            <button id="ins-sell">Sell</button>
-            <button class="ghost" id="ins-close">Close</button>
+          <aside id="terra-panel" aria-label="Terraform shop">
+            <div class="terra-head">
+              <h2>Terraform</h2>
+              <p id="shop-title">Intermission</p>
+            </div>
+            <div id="terra-cards"></div>
+          </aside>
+
+          <div id="inspector">
+            <div class="ins-head">
+              <h3 id="ins-name">Tower</h3>
+              <button type="button" class="ghost icon-btn" id="ins-close" title="Close">✕</button>
+            </div>
+            <p id="ins-info"></p>
+            <div class="paths">
+              <div class="path">
+                <div class="path-label" id="path-l-name">Focus</div>
+                <div class="path-btns" id="path-l-btns"></div>
+              </div>
+              <div class="path">
+                <div class="path-label" id="path-r-name">Reach</div>
+                <div class="path-btns" id="path-r-btns"></div>
+              </div>
+            </div>
+            <div class="ins-actions">
+              <button type="button" id="ins-target">First</button>
+              <button type="button" id="ins-sell">Sell</button>
+            </div>
           </div>
         </div>
+
+        <aside id="sidebar">
+          <div class="tray-label">Towers</div>
+          <div id="tower-cards"></div>
+        </aside>
       </div>
 
-      <div id="shop">
-        <div class="shop-head">
-          <h2 id="shop-title">Intermission · Rimefield</h2>
-          <button class="primary" id="btn-wave">Next Wave</button>
+      <footer id="controls">
+        <button type="button" class="primary go" id="btn-wave">Next Wave</button>
+        <div id="combat-status">
+          <div class="wave-live" id="combat-label">Wave in progress</div>
+          <div id="combat-counts"></div>
         </div>
-        <div class="shop-scroll">
-          <div class="shop-row" id="tower-cards"></div>
-          <div class="shop-row" id="terra-cards"></div>
+        <div class="hud-spacer"></div>
+        <div class="hud-btns">
+          <button type="button" id="btn-pause" title="Pause">Pause</button>
+          <button type="button" id="btn-speed" title="Fast-forward">1×</button>
+          <button type="button" id="btn-mute" title="Mute">Mute</button>
+          <button type="button" id="btn-restart" title="Restart">Restart</button>
         </div>
-      </div>
-
-      <div id="combat-bar">
-        <div class="wave-live" id="combat-label">Wave in progress</div>
-        <div id="combat-counts"></div>
-      </div>
+      </footer>
     </section>
 
     <div class="overlay" id="pause-ov">

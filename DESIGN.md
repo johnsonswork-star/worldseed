@@ -71,7 +71,7 @@ Meters clamp at 100. Buying past 100 is disabled per-meter (Worldpulse still app
 
 ## Towers (4 types, 3 levels)
 
-Range is in **tiles**. Cooldown in seconds. Targeting: **first** (highest path progress). Sell refunds **60%** of spores invested (base + upgrades).
+Range is in **tiles**. Cooldown in seconds. Default targeting: **first** (highest path progress). A selected tower can cycle **First / Last / Close / Strong**. Sell refunds **75%** of spores invested (base + upgrades).
 
 | Tower     | Cost | Dmg | CD  | Range | Role / notes |
 |-----------|------|-----|-----|-------|----------------|
@@ -80,10 +80,11 @@ Range is in **tiles**. Cooldown in seconds. Targeting: **first** (highest path p
 | **Rime**    | 60 | 7  | 0.90 | 2.3 | Ice shard. 40% slow for 2.0s. 15% less vs armor. |
 | **Bramble** | 80 | 5  | 0.70 | 2.4 | Thorn + poison 14 dmg over 3s (no armor). |
 
-**Upgrades** (max level 3):
+**Upgrades** — two paths, two tiers each (**Focus** = damage / fire rate, **Reach** = range / special). Crosspath is capped at **2/1** or **1/2** (not 2/2).
 
-- Cost: `round(baseCost * 0.65 * level)` so Needle is 29 then 58.
-- Each level: **+28% damage**, **+10% range**, **−9% cooldown**, splash/poison/slow scale +12%.
+- Cost per tier on a path: `round(baseCost * 0.65 * tier)` so Needle Focus 1 is 29, Focus 2 is 58.
+- Focus 1/2: **+40% damage** each; fire rate **−9% cooldown** per Focus tier.
+- Reach 1/2: **+15% range** each; splash / slow / poison scale on Reach. Needle Reach 2 also cuts armor.
 
 Synergy with terraform (small, not required):
 
@@ -141,8 +142,11 @@ Spawn spacing inside a pack is `gap` seconds. Packs run back-to-back with 0.8s b
 
 ## HUD / systems
 
-- Meters, Spores, wave name/#, lives, stage name.
-- Pause, mute, restart, 1x/2x speed.
+- Top bar: lives (heart), Spores, wave #, stage name, compact terraform meters.
+- Right tray: portrait buttons for Needle / Cinder / Rime / Bramble (cost under each). Buy then tap a tile.
+- Selected tower: bottom Focus / Reach upgrade panel, sell (75%), targeting cycle.
+- Intermission terraform shop is a labeled corner panel (does not cover the map).
+- Bottom cluster: Next Wave (large green), Pause, 1×/2×, Mute.
 - No IAP. Optional **localStorage** key `worldseed-save-v1` (wave, resources, towers, meters). Written on intermission and pause.
 - Touch-first: pointer events, large shop cards, `touch-action: none` on the canvas, AudioContext resume on first gesture.
 - Defeat: core at 0 lives. Victory: survive wave 10.

@@ -40,6 +40,21 @@
     return 1 + 0.13 * waveIndex;
   }
 
+  function portraitSVG(id, def) {
+    const c = def.color2 || "#fff";
+    const d = def.color || "#aaa";
+    if (id === "needle") {
+      return '<svg viewBox="0 0 64 64" aria-hidden="true"><polygon points="54,32 14,44 18,32 14,20" fill="' + c + '"/><rect x="8" y="28" width="12" height="8" rx="2" fill="' + d + '"/></svg>';
+    }
+    if (id === "cinder") {
+      return '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="16" fill="' + d + '"/><circle cx="32" cy="34" r="8" fill="' + c + '"/><path d="M28 16l4 10 4-10" stroke="' + c + '" stroke-width="3" fill="none"/></svg>';
+    }
+    if (id === "rime") {
+      return '<svg viewBox="0 0 64 64" aria-hidden="true"><g stroke="' + c + '" stroke-width="4" stroke-linecap="round"><path d="M32 10v44M12 32h40M18 18l28 28M46 18L18 46"/></g></svg>';
+    }
+    return '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="12" fill="none" stroke="' + d + '" stroke-width="4"/><path d="M20 36Q32 12 46 30" fill="none" stroke="' + c + '" stroke-width="3"/><circle cx="32" cy="34" r="4" fill="' + c + '"/></svg>';
+  }
+
   class Game {
     constructor() {
       this.canvas = $("c");
@@ -192,13 +207,14 @@
         localStorage.setItem(
           WS.SAVE_KEY,
           JSON.stringify({
-            v: 1,
+            v: 2,
             spores: this.spores,
             lives: this.lives,
             waveIndex: this.waveIndex,
             meters: this.meters,
             towers: this.towers.map((t) => ({
-              id: t.id, c: t.c, r: t.r, level: t.level, spent: t.spent
+              id: t.id, c: t.c, r: t.r, level: t.level, spent: t.spent,
+              pathL: t.pathL, pathR: t.pathR, target: t.target
             }))
           })
         );
@@ -211,14 +227,14 @@
         const raw = localStorage.getItem(WS.SAVE_KEY);
         if (!raw) return false;
         const d = JSON.parse(raw);
-        if (!d || d.v !== 1) return false;
+        if (!d || (d.v !== 1 && d.v !== 2)) return false;
         this.spores = d.spores;
         this.lives = d.lives;
         this.waveIndex = d.waveIndex;
         this.meters = d.meters;
         this.stage = this.computeStage();
         this.visualStage = this.stage;
-        this.towers = (d.towers || []).map((t) => this.makeTower(t.id, t.c, t.r, t.level, t.spent));
+        this.towers = (d.towers || []).map((t) => this.makeTower(t.id, t.c, t.r, t.level, t.spent, t));
         this.intermission = true;
         this.enemies = [];
         this.bolts = [];
@@ -232,7 +248,7 @@
     hasSave() {
       try {
         const d = JSON.parse(localStorage.getItem(WS.SAVE_KEY) || "null");
-        return !!(d && d.v === 1 && d.lives > 0 && d.waveIndex < WS.WAVE_COUNT);
+        return !!(d && (d.v === 1 || d.v === 2) && d.lives > 0 && d.waveIndex < WS.WAVE_COUNT);
       } catch (e) {
         return false;
       }
@@ -260,8 +276,8 @@
       $("btn-again").addEventListener("click", () => this.startNew());
       $("btn-wave").addEventListener("click", () => this.startWave());
       $("ins-close").addEventListener("click", () => this.selectTower(null));
-      $("ins-up").addEventListener("click", () => this.upgradeSelected());
       $("ins-sell").addEventListener("click", () => this.sellSelected());
+      $("ins-target").addEventListener("click", () => this.cycleTarget());
 
       const c = this.canvas;
       const onPtr = (ev, down) => {
@@ -380,58 +396,111 @@
       }
       this.refreshInspector();
       box.classList.add("open");
-      const x = (tw.c + 1) * this.ts + 8;
-      const y = tw.r * this.ts;
-      const field = $("playfield").getBoundingClientRect();
-      const canvas = this.canvas.getBoundingClientRect();
-      let left = canvas.left - field.left + x;
-      let top = canvas.top - field.top + y;
-      left = clamp(left, 8, field.width - 190);
-      top = clamp(top, 8, field.height - 120);
-      box.style.left = left + "px";
-      box.style.top = top + "px";
     }
 
     refreshInspector() {
       const tw = this.selectedTower;
       if (!tw) return;
       const def = WS.TOWERS[tw.id];
-      $("ins-name").textContent = def.name + "  L" + tw.level;
-      const next = tw.level < 3 ? upgradeCost(def.cost, tw.level) : null;
-      $("ins-info").textContent = next
-        ? "Upgrade " + next + " · Sell " + Math.floor(tw.spent * WS.SELL_RATIO)
-        : "Maxed · Sell " + Math.floor(tw.spent * WS.SELL_RATIO);
-      $("ins-up").disabled = !next || this.spores < next;
-      $("ins-up").textContent = next ? "Upgrade " + next : "Maxed";
+      const paths = WS.PATHS[tw.id];
+      const refund = Math.floor(tw.spent * WS.SELL_RATIO);
+      $("ins-name").textContent = def.name;
+      $("ins-info").textContent =
+        "Focus " + tw.pathL + "/2 · Reach " + tw.pathR + "/2 · Sell " + refund + " spores";
+      $("path-l-name").textContent = WS.PATH_NAMES.L;
+      $("path-r-name").textContent = WS.PATH_NAMES.R;
+      this.renderPathButtons("L", paths.L, tw);
+      this.renderPathButtons("R", paths.R, tw);
+      $("ins-target").textContent = WS.TARGET_LABEL[tw.target] || "First";
+      $("ins-sell").textContent = "Sell " + refund;
     }
 
-    makeTower(id, c, r, level, spent) {
+    renderPathButtons(side, tiers, tw) {
+      const wrap = $(side === "L" ? "path-l-btns" : "path-r-btns");
+      wrap.innerHTML = "";
+      const cur = side === "L" ? tw.pathL : tw.pathR;
+      tiers.forEach((tier, i) => {
+        const n = i + 1;
+        const cost = upgradeCost(WS.TOWERS[tw.id].cost, n);
+        const b = document.createElement("button");
+        b.type = "button";
+        const owned = cur >= n;
+        const allowed = this.canUpgradePath(tw, side, n);
+        const afford = this.spores >= cost;
+        b.innerHTML =
+          '<span class="tier">' + tier.name + "</span>" +
+          (owned ? '<span class="price">Owned</span>' : '<span class="price">' + cost + "</span>") +
+          '<div class="blurb">' + tier.blurb + "</div>";
+        if (owned) b.classList.add("owned");
+        else if (!allowed) b.classList.add("locked");
+        else if (!afford) b.classList.add("unaffordable");
+        b.disabled = owned || !allowed || !afford;
+        b.addEventListener("click", () => this.upgradePath(side));
+        wrap.appendChild(b);
+      });
+    }
+
+    canUpgradePath(tw, side, nextTier) {
+      const cur = side === "L" ? tw.pathL : tw.pathR;
+      const other = side === "L" ? tw.pathR : tw.pathL;
+      if (nextTier !== cur + 1) return false;
+      if (nextTier > 2) return false;
+      if (nextTier === 2 && other >= 2) return false;
+      return true;
+    }
+
+    cycleTarget() {
+      const tw = this.selectedTower;
+      if (!tw) return;
+      const order = WS.TARGET_ORDER;
+      const i = order.indexOf(tw.target || "first");
+      tw.target = order[(i + 1) % order.length];
+      this.refreshInspector();
+      WSAudio.ui();
+    }
+
+    makeTower(id, c, r, level, spent, extra) {
       const def = WS.TOWERS[id];
+      extra = extra || {};
+      let pathL = extra.pathL;
+      let pathR = extra.pathR;
+      if (pathL == null) {
+        const lv = Math.max(0, (level || 1) - 1);
+        pathL = Math.min(lv, 2);
+        pathR = 0;
+      }
+      pathL = pathL || 0;
+      pathR = pathR || 0;
       return {
         id, c, r,
-        level: level || 1,
+        pathL,
+        pathR,
+        level: 1 + pathL + pathR,
         spent: spent != null ? spent : def.cost,
         cd: 0,
-        angle: 0
+        angle: 0,
+        target: extra.target || "first"
       };
     }
 
     towerStats(tw) {
       const def = WS.TOWERS[tw.id];
-      const lv = tw.level - 1;
-      const dmg = def.dmg * (1 + 0.28 * lv);
-      let range = def.range * (1 + 0.1 * lv);
+      const l = tw.pathL || 0;
+      const r = tw.pathR || 0;
+      const dmg = def.dmg * (1 + 0.4 * l);
+      let range = def.range * (1 + 0.15 * r);
       if (this.meters.aera >= 40) range *= 1.08;
-      const cd = def.cd * Math.pow(0.91, lv);
-      let splash = def.splash ? def.splash * (1 + 0.12 * lv) : 0;
+      const cd = def.cd * Math.pow(0.91, l);
+      let splash = def.splash ? def.splash * (1 + 0.16 * r) : 0;
       if (def.splash && this.meters.pyra >= 40) splash *= 1.15;
-      let slow = def.slow ? def.slow * (1 + 0.12 * lv) : 0;
+      let slow = def.slow ? def.slow * (1 + 0.08 * r) : 0;
       if (def.slow && this.meters.aqua >= 40) slow = Math.min(0.65, slow + 0.1);
-      let poison = def.poison ? def.poison * (1 + 0.12 * lv) : 0;
+      let poison = def.poison ? def.poison * (1 + 0.22 * r) : 0;
       if (def.poison && this.meters.vita >= 40) poison *= 1.25;
-      const slowTime = def.slowTime ? def.slowTime * (1 + 0.05 * lv) : 0;
+      const slowTime = def.slowTime ? def.slowTime * (1 + 0.12 * r) : 0;
       const poisonTime = def.poisonTime || 0;
-      return { dmg, range, cd, splash, slow, slowTime, poison, poisonTime, physical: !!def.physical, fire: !!def.fire };
+      const armorPierce = (tw.id === "needle" && r >= 2) ? 0.45 : 0;
+      return { dmg, range, cd, splash, slow, slowTime, poison, poisonTime, physical: !!def.physical, fire: !!def.fire, armorPierce };
     }
 
     placeTower(id, c, r) {
@@ -452,14 +521,19 @@
       this.buildShop();
     }
 
-    upgradeSelected() {
+    upgradePath(side) {
       const tw = this.selectedTower;
-      if (!tw || tw.level >= 3) return;
+      if (!tw) return;
+      const cur = side === "L" ? tw.pathL : tw.pathR;
+      const next = cur + 1;
+      if (!this.canUpgradePath(tw, side, next)) return;
       const def = WS.TOWERS[tw.id];
-      const cost = upgradeCost(def.cost, tw.level);
+      const cost = upgradeCost(def.cost, next);
       if (this.spores < cost) return;
       this.spores -= cost;
-      tw.level += 1;
+      if (side === "L") tw.pathL = next;
+      else tw.pathR = next;
+      tw.level = 1 + tw.pathL + tw.pathR;
       tw.spent += cost;
       WSAudio.place();
       this.syncHUD();
@@ -501,7 +575,11 @@
         b.className = "card";
         b.dataset.id = def.id;
         b.disabled = this.spores < def.cost;
-        b.innerHTML = '<div class="name">' + def.name + '</div><div class="blurb">' + def.blurb + '</div><div class="cost">' + def.cost + " spores</div>";
+        b.setAttribute("aria-label", def.name + " " + def.cost + " spores");
+        b.innerHTML =
+          '<div class="portrait" style="--c1:' + def.color + ";--c2:" + def.color2 + '">' +
+          portraitSVG(def.id, def) +
+          '</div><div class="name">' + def.name + '</div><div class="cost">' + def.cost + "</div>";
         b.addEventListener("click", () => this.pickShop(def.id));
         towerWrap.appendChild(b);
       });
@@ -576,8 +654,9 @@
 
     openShop(open) {
       this.intermission = open;
-      $("shop").classList.toggle("open", open);
-      $("combat-bar").classList.toggle("open", !open);
+      $("terra-panel").classList.toggle("open", open);
+      $("btn-wave").hidden = !open;
+      $("combat-status").classList.toggle("open", !open);
       if (open) {
         this.buildShop();
         this.save();
@@ -644,17 +723,23 @@
       const x = (tw.c + 0.5) * this.ts;
       const y = (tw.r + 0.5) * this.ts;
       const range = stats.range * this.ts;
+      const mode = tw.target || "first";
       let best = null;
-      let bestP = -1;
+      let bestScore = (mode === "last" || mode === "close") ? Infinity : -1;
       for (let i = 0; i < this.enemies.length; i++) {
         const e = this.enemies[i];
         if (e.hp <= 0) continue;
-        if (dist(x, y, e.x, e.y) <= range + e.size * this.ts) {
-          const p = e.seg + e.t;
-          if (p > bestP) {
-            bestP = p;
-            best = e;
-          }
+        const d = dist(x, y, e.x, e.y);
+        if (d > range + e.size * this.ts) continue;
+        let score;
+        if (mode === "last") score = e.seg + e.t;
+        else if (mode === "close") score = d;
+        else if (mode === "strong") score = e.hp;
+        else score = e.seg + e.t;
+        const better = (mode === "last" || mode === "close") ? score < bestScore : score > bestScore;
+        if (!best || better) {
+          bestScore = score;
+          best = e;
         }
       }
       return best;
@@ -680,7 +765,10 @@
     applyHit(e, stats, isSplash) {
       if (!e || e.hp <= 0) return;
       let dmg = stats.dmg;
-      if (stats.physical && e.armor) dmg *= 1 - e.armor;
+      if (stats.physical && e.armor) {
+        const armor = Math.max(0, e.armor * (1 - (stats.armorPierce || 0)));
+        dmg *= 1 - armor;
+      }
       e.hp -= dmg;
       e.hitFlash = 0.12;
       if (stats.slow && stats.slow > (1 - e.slowMul + 0.001)) {
@@ -828,6 +916,8 @@
       $("wave-num").textContent = Math.min(this.waveIndex + 1, WS.WAVE_COUNT) + " / " + WS.WAVE_COUNT;
       $("spore-num").textContent = String(this.spores | 0);
       $("life-num").textContent = String(Math.max(0, this.lives));
+      const chip = $("stage-chip");
+      if (chip) chip.textContent = WS.STAGE_NAMES[this.stage];
       WS.METERS.forEach((m) => {
         $(m + "-val").textContent = String(this.meters[m] | 0);
         $(m + "-fill").style.width = this.meters[m] + "%";
@@ -1196,10 +1286,18 @@
         ctx.stroke();
       }
       ctx.restore();
+      const l = tw.pathL || 0;
+      const r = tw.pathR || 0;
       ctx.fillStyle = "#e8c86a";
-      for (let i = 0; i < tw.level; i++) {
+      for (let i = 0; i < l; i++) {
         ctx.beginPath();
-        ctx.arc(x - ts * 0.16 + i * ts * 0.16, y + ts * 0.32, 2.2, 0, Math.PI * 2);
+        ctx.arc(x - ts * 0.2 + i * ts * 0.14, y + ts * 0.32, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#80d0ff";
+      for (let i = 0; i < r; i++) {
+        ctx.beginPath();
+        ctx.arc(x + ts * 0.08 + i * ts * 0.14, y + ts * 0.32, 2.2, 0, Math.PI * 2);
         ctx.fill();
       }
     }
