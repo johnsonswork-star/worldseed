@@ -97,7 +97,7 @@
       this.pointerDown = false;
       this.bindUI();
       this.resize();
-      window.addEventListener("resize", () => this.resize());
+      window.addEventListener("resize", () => this.scheduleResize());
       window.addEventListener("orientationchange", () => setTimeout(() => this.resize(), 180));
       document.addEventListener("visibilitychange", () => {
         if (document.hidden && this.state === "play") this.setPaused(true);
@@ -181,7 +181,7 @@
       $("game-screen").classList.remove("hidden");
       this.state = "play";
       this.reset();
-      this.resize();
+      this.scheduleResize();
     }
 
     continueSave() {
@@ -198,7 +198,7 @@
       this.syncHUD();
       this.buildShop();
       this.openShop(true);
-      this.resize();
+      this.scheduleResize();
       this.banner("Vesna remembers", 1.8);
     }
 
@@ -342,12 +342,32 @@
       this.setPaused(true);
     }
 
+    scheduleResize() {
+      this.resize();
+      requestAnimationFrame(() => {
+        this.resize();
+        requestAnimationFrame(() => this.resize());
+      });
+    }
+
     resize() {
       const wrap = $("playfield");
-      if (!wrap) return;
+      if (!wrap || !this.canvas) return;
       const rect = wrap.getBoundingClientRect();
-      const pad = 4;
-      const ts = Math.max(16, Math.floor(Math.min((rect.width - pad) / WS.COLS, (rect.height - pad) / WS.ROWS)));
+      let availW = rect.width;
+      let availH = rect.height;
+      if (availW < 80 || availH < 80) {
+        const hudH = ($("hud") && $("hud").offsetHeight) || 56;
+        const ctrlH = ($("controls") && $("controls").offsetHeight) || 62;
+        const trayRaw = getComputedStyle(document.documentElement).getPropertyValue("--tray");
+        const tray = parseFloat(trayRaw) || 92;
+        availW = Math.max(availW, window.innerWidth - tray - 28);
+        availH = Math.max(availH, window.innerHeight - hudH - ctrlH - 28);
+      }
+      availW = Math.max(160, availW);
+      availH = Math.max(120, availH);
+      const pad = 8;
+      const ts = Math.max(16, Math.floor(Math.min((availW - pad) / WS.COLS, (availH - pad) / WS.ROWS)));
       this.ts = ts;
       this.lw = ts * WS.COLS;
       this.lh = ts * WS.ROWS;
