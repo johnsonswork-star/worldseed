@@ -126,6 +126,12 @@
       this.waveActive = false;
       this.hudAcc = 0;
       this.pointerDown = false;
+      this.sprites = {};
+      ["heater", "collector", "vent", "seeder", "needle", "cinder", "rime", "bramble"].forEach((id) => {
+        const img = new Image();
+        img.src = "img/" + id + ".png?v=4";
+        this.sprites[id] = img;
+      });
       this.bindUI();
       this.resize();
       window.addEventListener("resize", () => this.scheduleResize());
@@ -714,7 +720,7 @@
         b.setAttribute("aria-label", def.name + " " + def.cost + " spores");
         b.innerHTML =
           '<div class="portrait" style="--c1:' + def.color + ";--c2:" + def.color2 + '">' +
-          portraitSVG(def.id, def) +
+          '<img alt="" src="img/' + def.id + '.png?v=4">' +
           '</div><div class="name">' + def.name + '</div><div class="cost">' + def.cost + "</div>";
         b.addEventListener("click", () => this.pickShop(def.id));
         towerWrap.appendChild(b);
@@ -734,7 +740,7 @@
           b.setAttribute("aria-label", def.name + " " + def.cost + " spores");
           b.innerHTML =
             '<div class="portrait" style="--c1:' + def.color + ";--c2:" + def.color2 + '">' +
-            portraitSVG(def.id, def) +
+            '<img alt="" src="img/' + def.id + '.png?v=4">' +
             '</div><div class="name">' + def.name + '</div><div class="cost">' + def.cost + "</div>";
           b.addEventListener("click", () => this.pickShop(def.id));
           buildWrap.appendChild(b);
@@ -1361,6 +1367,14 @@
       this.ctx.stroke();
     }
 
+    drawSprite(id, ts) {
+      const img = this.sprites && this.sprites[id];
+      if (!img || !img.complete || !img.naturalWidth) return false;
+      const s = ts * 0.98;
+      this.ctx.drawImage(img, -s / 2, -s * 0.62, s, s);
+      return true;
+    }
+
     drawBuilding(b) {
       const ctx = this.ctx;
       const ts = this.ts;
@@ -1370,6 +1384,15 @@
       const y = (b.r + 0.5) * ts;
       ctx.save();
       ctx.translate(x, y);
+      if (this.drawSprite(b.id, ts)) {
+        ctx.restore();
+        if (this.selectedTower === b) {
+          ctx.strokeStyle = def.color2;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(b.c * ts + 2, b.r * ts + 2, ts - 4, ts - 4);
+        }
+        return;
+      }
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
       ctx.lineWidth = Math.max(2, ts * 0.06);
@@ -1463,6 +1486,10 @@
       }
       ctx.save();
       ctx.translate(x, y);
+      if (this.drawSprite(tw.id, ts)) {
+        ctx.restore();
+        return;
+      }
       ctx.fillStyle = "#12181c";
       ctx.beginPath();
       ctx.arc(0, ts * 0.18, ts * 0.28, 0, Math.PI * 2);
