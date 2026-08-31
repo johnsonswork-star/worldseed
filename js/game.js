@@ -95,10 +95,16 @@
       this.waveActive = false;
       this.hudAcc = 0;
       this.pointerDown = false;
+      this.immersive = false;
       this.bindUI();
       this.resize();
       window.addEventListener("resize", () => this.scheduleResize());
-      window.addEventListener("orientationchange", () => setTimeout(() => this.resize(), 180));
+      window.addEventListener("orientationchange", () => setTimeout(() => this.scheduleResize(), 180));
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", () => this.scheduleResize());
+      }
+      document.addEventListener("fullscreenchange", () => this.syncFullscreen());
+      document.addEventListener("webkitfullscreenchange", () => this.syncFullscreen());
       document.addEventListener("visibilitychange", () => {
         if (document.hidden && this.state === "play") this.setPaused(true);
       });
@@ -266,6 +272,7 @@
       $("btn-pause").addEventListener("click", () => this.setPaused(!this.paused));
       $("btn-resume").addEventListener("click", () => this.setPaused(false));
       $("btn-mute").addEventListener("click", () => this.syncMute(WSAudio.toggle()));
+      $("btn-full").addEventListener("click", () => this.toggleFullscreen());
       $("btn-speed").addEventListener("click", () => {
         this.speed = this.speed === 1 ? 2 : 1;
         $("btn-speed").textContent = this.speed + "×";
@@ -342,6 +349,54 @@
       this.setPaused(true);
     }
 
+    fsEl() {
+      return document.fullscreenElement || document.webkitFullscreenElement || null;
+    }
+
+    syncFullscreen() {
+      const on = !!(this.fsEl() || this.immersive);
+      document.body.classList.toggle("immersive", on);
+      const btn = $("btn-full");
+      if (btn) btn.textContent = on ? "Exit" : "Full";
+      this.scheduleResize();
+    }
+
+    async toggleFullscreen() {
+      const root = $("app") || document.documentElement;
+      WSAudio.ui();
+      const native = root.requestFullscreen || root.webkitRequestFullscreen;
+      if (this.fsEl()) {
+        this.immersive = false;
+        try {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        } catch (e) {}
+        this.syncFullscreen();
+        return;
+      }
+      if (this.immersive) {
+        this.immersive = false;
+        this.syncFullscreen();
+        return;
+      }
+      let ok = false;
+      if (native) {
+        try {
+          if (root.requestFullscreen) await root.requestFullscreen({ navigationUI: "hide" });
+          else root.webkitRequestFullscreen();
+          ok = true;
+        } catch (e) {
+          ok = false;
+        }
+      }
+      if (!ok && !this.fsEl()) {
+        this.immersive = true;
+        try { window.scrollTo(0, 0); } catch (e) {}
+        this.banner("Safari keeps the address bar. Add to Home Screen for true full screen.", 2.6);
+      }
+      this.syncFullscreen();
+    }
+
     scheduleResize() {
       this.resize();
       requestAnimationFrame(() => {
@@ -354,20 +409,19 @@
       const wrap = $("playfield");
       if (!wrap || !this.canvas) return;
       const rect = wrap.getBoundingClientRect();
+      const vv = window.visualViewport;
       let availW = rect.width;
       let availH = rect.height;
       if (availW < 80 || availH < 80) {
-        const hudH = ($("hud") && $("hud").offsetHeight) || 56;
-        const ctrlH = ($("controls") && $("controls").offsetHeight) || 62;
-        const trayRaw = getComputedStyle(document.documentElement).getPropertyValue("--tray");
-        const tray = parseFloat(trayRaw) || 92;
-        availW = Math.max(availW, window.innerWidth - tray - 28);
-        availH = Math.max(availH, window.innerHeight - hudH - ctrlH - 28);
+        const vw = vv ? vv.width : window.innerWidth;
+        const vh = vv ? vv.height : window.innerHeight;
+        availW = Math.max(availW, vw);
+        availH = Math.max(availH, vh);
       }
       availW = Math.max(160, availW);
-      availH = Math.max(120, availH);
-      const pad = 8;
-      const ts = Math.max(16, Math.floor(Math.min((availW - pad) / WS.COLS, (availH - pad) / WS.ROWS)));
+      availH = Math.max(140, availH);
+      const pad = 2;
+      const ts = Math.max(12, Math.floor(Math.min((availW - pad) / WS.COLS, (availH - pad) / WS.ROWS)));
       this.ts = ts;
       this.lw = ts * WS.COLS;
       this.lh = ts * WS.ROWS;

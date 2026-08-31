@@ -155,32 +155,32 @@ button.ghost {
 .title-actions button { min-width: 9rem; font-size: 1.05rem; }
 .hint { font-size: 0.75rem; color: #6a808c; margin-top: 0.4rem; }
 
-/* ---------- game chrome: match HUD ---------- */
+/* ---------- game chrome: overlays on a full-bleed map ---------- */
 #game-screen {
   position: absolute;
   inset: 0;
-  display: grid;
-  grid-template-rows: auto minmax(220px, 1fr) auto;
-  grid-template-columns: minmax(0, 1fr);
-  padding: calc(0.22rem + var(--safe)) 0.3rem calc(0.2rem + var(--safeb));
-  padding-left: max(0.3rem, var(--safel));
-  padding-right: max(0.3rem, var(--safer));
-  gap: 0.22rem;
-  background:
-    radial-gradient(ellipse at 50% 0%, #163024 0%, transparent 42%),
-    var(--bg);
+  display: block;
+  padding: 0;
+  background: var(--bg);
 }
 #game-screen.hidden { display: none; }
 
 #hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: var(--tray);
+  z-index: 8;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.28rem;
   flex-wrap: wrap;
-  flex-shrink: 0;
-  min-height: var(--hud-h);
-  padding: 0.12rem 0.1rem;
+  min-height: 0;
+  padding: max(0.22rem, var(--safe)) 0.35rem 0.35rem 0.4rem;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(7,12,16,0.78) 0%, rgba(7,12,16,0.22) 70%, transparent 100%);
 }
+#hud > * { pointer-events: auto; }
 .stat {
   display: flex;
   align-items: center;
@@ -261,15 +261,18 @@ button.ghost {
 .meter.aqua .fill { background: var(--aqua); }
 .meter.vita .fill { background: var(--vita); }
 
-/* ---------- match: playfield + tray ---------- */
+/* ---------- match: playfield + tray, full viewport ---------- */
 #match {
-  min-height: 220px;
-  height: 100%;
+  position: absolute;
+  inset: 0;
+  min-height: 0;
   min-width: 0;
+  height: 100%;
+  width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--tray);
   grid-template-rows: minmax(0, 1fr);
-  gap: 0.28rem;
+  gap: 0;
 }
 
 #playfield {
@@ -277,15 +280,12 @@ button.ghost {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 220px;
+  min-height: 0;
+  min-width: 0;
   height: 100%;
   width: 100%;
-  min-width: 0;
-  border-radius: 16px;
   overflow: hidden;
   background: #05080c;
-  border: 3px solid #1e3340;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 4px 0 #05080c;
 }
 #playfield canvas {
   display: block;
@@ -318,11 +318,11 @@ button.ghost {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   background: linear-gradient(180deg, #1a2c28, #101820);
-  border: 3px solid #2a5040;
-  border-radius: 16px;
+  border-left: 3px solid #2a5040;
+  border-radius: 0;
   padding: 0.28rem;
-  box-shadow: 0 3px 0 #05080c;
 }
 .tray-label {
   text-align: center;
@@ -406,9 +406,9 @@ button.ghost {
   display: none;
   position: absolute;
   left: 8px;
-  top: 8px;
-  width: min(228px, 38%);
-  max-height: min(34%, 168px);
+  top: 52px;
+  width: min(200px, 34%);
+  max-height: min(38%, 160px);
   z-index: 6;
   flex-direction: column;
   gap: 0.35rem;
@@ -471,7 +471,7 @@ button.ghost {
   position: absolute;
   left: 8px;
   right: 8px;
-  bottom: 8px;
+  bottom: 58px;
   z-index: 7;
   padding: 0.45rem 0.5rem 0.5rem;
   background: linear-gradient(180deg, rgba(18, 26, 22, 0.96), rgba(10, 14, 16, 0.96));
@@ -561,15 +561,22 @@ button.ghost {
   border-color: #f0a090;
 }
 
-/* ---------- bottom control cluster ---------- */
+/* ---------- bottom control cluster (overlay) ---------- */
 #controls {
+  position: absolute;
+  left: 0;
+  right: var(--tray);
+  bottom: 0;
+  z-index: 8;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  flex-shrink: 0;
-  min-height: var(--ctrl-h);
-  padding: 0.1rem 0.05rem;
+  gap: 0.35rem;
+  min-height: 0;
+  padding: 0.28rem 0.4rem max(0.28rem, var(--safeb));
+  pointer-events: none;
+  background: linear-gradient(0deg, rgba(7,12,16,0.82) 0%, rgba(7,12,16,0.2) 75%, transparent 100%);
 }
+#controls > * { pointer-events: auto; }
 #btn-wave {
   min-width: min(42vw, 220px);
   min-height: 50px;
@@ -661,18 +668,30 @@ button.ghost {
   :root { --tray: 78px; --hud-h: 46px; --ctrl-h: 52px; }
   .stat b { font-size: 1rem; }
   #meters { display: none; }
-  #terra-panel { width: min(200px, 46%); max-height: min(30%, 140px); }
-  #btn-wave { min-width: 7.4rem; font-size: 0.88rem; letter-spacing: 0.04em; }
+  #terra-panel { width: min(190px, 42%); max-height: min(32%, 132px); }
+  #btn-wave { min-width: 7.2rem; font-size: 0.84rem; letter-spacing: 0.04em; }
+}
+
+@media (orientation: landscape) {
+  :root { --tray: 84px; }
+  .stat { min-height: 34px; padding: 0.14rem 0.4rem; border-width: 2px; }
+  .stat b { font-size: 0.95rem; }
+  #btn-wave { min-height: 40px; min-width: 8rem; font-size: 0.86rem; border-radius: 12px; }
+  .hud-btns button { min-height: 36px; min-width: 40px; padding: 0 0.38rem; font-size: 0.68rem; }
+  #tower-cards .card { min-height: 50px; }
+  #terra-panel { top: 46px; }
 }
 
 @media (orientation: portrait) and (max-width: 700px) {
   .rotate-hint { display: block; }
-  :root { --tray: 86px; }
+  :root { --tray: 78px; }
   #match {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(180px, 1fr) 86px;
+    grid-template-rows: minmax(0, 1fr) 78px;
   }
-  #sidebar { flex-direction: row; align-items: stretch; }
+  #hud, #controls { right: 0; }
+  #controls { bottom: 78px; }
+  #sidebar { flex-direction: row; align-items: stretch; border-radius: 0; }
   .tray-label {
     writing-mode: vertical-rl;
     transform: rotate(180deg);
@@ -680,9 +699,14 @@ button.ghost {
   }
   #tower-cards { flex-direction: row; }
   #tower-cards .card { min-width: 68px; max-height: none; }
-  #terra-panel { max-height: 38%; }
-  #inspector { max-height: 42%; overflow: auto; }
+  #terra-panel { max-height: 32%; top: 52px; }
+  #inspector { max-height: 38%; overflow: auto; bottom: 86px; }
 }
+
+body.immersive #game-screen {
+  inset: 0;
+}
+body.immersive .rotate-hint { display: none; }
 
 @media (min-width: 1100px) {
   :root { --tray: 118px; }
